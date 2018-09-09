@@ -55,7 +55,19 @@ class Game extends React.Component {
     };
   }
   
+  componentDidMount() {
+    
+    const url1 = 'http://54.187.105.135:3001/symbols'
+    const url2 = 'http://localhost:3001/symbols'
+    
+    fetch(url1).then( (results) => results.json()).then( (symbols) => {
+      console.log('IT FUCKING WORKED', symbols)
+      this.setState({symbols: symbols})
+    })
+  }
+  
   handleClick(i) {
+    console.log('FUCK')
     const history = this.state.history.slice(0, this.state.stepNumber + 1);
     const current = history[history.length - 1];
     const squares = current.squares.slice();
@@ -102,7 +114,7 @@ class Game extends React.Component {
     if (winner) {
       status = 'Winner: ' + winner;
     } else {
-      status = 'Next player: ' + (this.state.xIsNext ? 'X' : 'O');
+      status = 'Next player: ' + this.state.symbols;
     }
     
     return (
