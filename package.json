@@ -4,8 +4,11 @@
   "private": true,
   "dependencies": {
     "react": "^16.5.0",
+    "react-basic-table": "^1.0.14",
     "react-dom": "^16.5.0",
-    "react-scripts": "1.1.5"
+    "react-scripts": "1.1.5",
+    "react-select": "^2.0.0",
+    "react-table": "^6.8.6"
   },
   "scripts": {
     "start": "react-scripts start",

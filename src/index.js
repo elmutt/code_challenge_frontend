@@ -1,162 +1,171 @@
 import React from 'react';
 import ReactDOM from 'react-dom';
 import './index.css';
+import ReactTable from "react-table";
+import 'react-table/react-table.css'
+import SelectReact from 'react-select';
 
-function Square(props) {
-  return (
-    <button className="square" onClick={props.onClick}>
-      {props.value}
-    </button>
-  );
-}
-
-class Board extends React.Component {
+class CombinedOrderBooks extends React.Component {
   
-  renderSquare(i) {
-    return <Square 
-      value={this.props.squares[i]}
-      onClick={() => this.props.onClick(i)}
-    />;
-  }
-
-  render() {
-    return (
-      <div>
-        <div className="board-row">
-          {this.renderSquare(0)}
-          {this.renderSquare(1)}
-          {this.renderSquare(2)}
-        </div>
-        <div className="board-row">
-          {this.renderSquare(3)}
-          {this.renderSquare(4)}
-          {this.renderSquare(5)}
-        </div>
-        <div className="board-row">
-          {this.renderSquare(6)}
-          {this.renderSquare(7)}
-          {this.renderSquare(8)}
-        </div>
-      </div>
-    );
-  }
-}
-
-class Game extends React.Component {
-
   constructor(props) {
-    super(props);
+    super(props)
     this.state = {
-      history: [{
-        squares: Array(9).fill(null),
-      }],
-      xIsNext: true,
-      stepNumber: 0
-    };
+      base: 'BTC',
+      quote: 'ETH',
+      precision: 4,
+    }
   }
   
-  componentDidMount() {
+  async componentDidMount() {
+    this.setState(await this.fetchBookAndSymbols())
+  }
+
+
+  generateColumnsData() {
+    const columnItems = []
+    columnItems.push({Header: "Price", accessor: 'price'})
+    this.state.combinedBookData.exchangesIncluded.forEach( (exchange) => {
+      columnItems.push({Header: exchange + ' amount', accessor: exchange + '_amount'})
+    })
+    columnItems.push({Header: '# of orders combined', accessor: 'combined'})
+    return columnItems
+  }
+  
+  generateRowsData(type) {
+    const rowItems = this.state.combinedBookData[type].map( (order) => {
+      const rowItem = {}
+      rowItem.price = order.price
+      Object.keys(order.exchangeQuantities).forEach( (exchange, index) => {
+        rowItem[exchange + '_amount'] = order.exchangeQuantities[exchange]
+      })
+      rowItem.combined = order.combinedOrderCount
+      return rowItem
+    })
+    return rowItems
+  }
+
+  generateQuoteSelectionData() {
     
-    const url1 = 'http://54.187.105.135:3001/symbols'
-    const url2 = 'http://localhost:3001/symbols'
-    
-    fetch(url1).then( (results) => results.json()).then( (symbols) => {
-      console.log('IT FUCKING WORKED', symbols)
-      this.setState({symbols: symbols})
+    return this.state.symbols.map( (symbol) => {
+      
+      return { value: symbol, label: symbol }
     })
   }
   
-  handleClick(i) {
-    console.log('FUCK')
-    const history = this.state.history.slice(0, this.state.stepNumber + 1);
-    const current = history[history.length - 1];
-    const squares = current.squares.slice();
-    
-    
-    if (calculateWinner(squares) || squares[i]) {
-      return;
-    }
-    squares[i] = this.state.xIsNext ? 'X' : 'O';
-    this.setState({
-      history: history.concat([{
-        squares: squares,
-      }]),
-      xIsNext: !this.state.xIsNext,
-      stepNumber: history.length
-    });
+
+  handleBaseChange = async (selectedBaseOption) => {
+    this.setState({ base: selectedBaseOption.value });
+    this.setState(await this.fetchBookAndSymbols())
+  }
+  handleQuoteChange = async (selectedQuoteOption) => {
+    this.setState({ quote: selectedQuoteOption.value });
+    this.setState(await this.fetchBookAndSymbols())
+  }
+  handlePrecisionChange = async (selectedPrecisionOption) => {
+    this.setState({ precision: selectedPrecisionOption.value });
+    this.setState(await this.fetchBookAndSymbols())
   }
 
-  jumpTo(step) {
-    this.setState({
-      stepNumber: step,
-      xIsNext: (step % 2) === 0,
-    });
-  }
-  
+
   render() {
-
-    const history = this.state.history;
-    const current = history[this.state.stepNumber];
-    const winner = calculateWinner(current.squares);
-
-    const moves = history.map((step, move) => {
-      const desc = move ?
-        'Go to move #' + move :
-        'Go to game start';
-      return (
-        <li key={move}>
-          <button onClick={() => this.jumpTo(move)}>{desc}</button>
-        </li>
-      );
-    });
+    let columnsData
+    let bidsRowsData
+    let asksRowsData
+    let quoteSelectionOptions
     
-    let status;
-    if (winner) {
-      status = 'Winner: ' + winner;
-    } else {
-      status = 'Next player: ' + this.state.symbols;
+    try{
+      columnsData = this.generateColumnsData()
+    } catch(err){
+      columnsData = columnsData || [{
+        Header: 'Price',
+      }, {
+        Header: '',
+      }, {
+        Header: '',
+      }, {
+        Header: '',
+      }, {
+        Header: '',
+      }, {
+        Header: '',
+      }, {
+        Header: '# of orders combined'
+      }]
     }
+    
+    try {
+      bidsRowsData = this.generateRowsData('bids')
+    } catch(err){}
+    
+    try {
+      asksRowsData = this.generateRowsData('asks')
+    } catch(err){}
+
+    try {
+      quoteSelectionOptions = this.generateQuoteSelectionData()
+    }catch(err){}
     
     return (
-      <div className="game">
-        <div className="game-board">
-          <Board
-            squares={current.squares}
-            onClick={(i) => this.handleClick(i)}
-          />
-        </div>
-        <div className="game-info">
-          <div>{status}</div>
-          <ol>{moves}</ol>
-        </div>
+      <div>
+
+        <SelectReact
+          value={{value: this.state.base, label: this.state.base}}
+          onChange={this.handleBaseChange}
+          options={[
+            { value: 'BTC', label: 'BTC' },
+            { value: 'ETH', label: 'ETH' },
+          ]}
+        />
+        <SelectReact
+          value={{value: this.state.quote, label: this.state.quote}}
+          onChange={this.handleQuoteChange}
+          options={quoteSelectionOptions}
+        />
+        <SelectReact
+          value={{value: this.state.precision, label: this.state.precision+' Decimals'}}
+          onChange={this.handlePrecisionChange}
+          options={[
+            { value: 2, label: '2 Decimals' },
+            { value: 3, label: '3 Decimals' },
+            { value: 4, label: '4 Decimals' },
+            { value: 5, label: '5 Decimals' },
+            { value: 6, label: '6 Decimals' },
+            { value: 7, label: '7 Decimals' },
+            { value: 8, label: '8 Decimals' },
+          ]}
+        />
+
+        
+        <div>Combined Bids Order Book {this.state.base}-{this.state.quote}</div>
+        <ReactTable
+          data={bidsRowsData}
+          columns={columnsData}
+        />
+        <div>Combined Asks Order Book {this.state.base}-{this.state.quote}</div>
+        <ReactTable
+          data={asksRowsData}
+          columns={columnsData}
+        />
+        
       </div>
     );
   }
+  
+  async fetchBookAndSymbols() {
+   //    const baseUrl = 'http://54.187.105.135:3001'
+   const baseUrl = 'http://localhost:3001'
+   const symbols = await fetch(baseUrl + '/symbols').then( (results) => results.json())
+   const combinedBookData = await fetch(baseUrl + '/combined?base=' + this.state.base + '&quote=' + this.state.quote + '&precision=' + this.state.precision).then( (results) => results.json())
+
+   console.log('combinedBookData', combinedBookData)
+
+  return {symbols, combinedBookData}
+ }
 }
 
 // ========================================
 
 ReactDOM.render(
-  <Game />,
+  <CombinedOrderBooks />,
   document.getElementById('root')
 );
-
-function calculateWinner(squares) {
-  const lines = [
-    [0, 1, 2],
-    [3, 4, 5],
-    [6, 7, 8],
-    [0, 3, 6],
-    [1, 4, 7],
-    [2, 5, 8],
-    [0, 4, 8],
-    [2, 4, 6],
-  ];
-  for (let i = 0; i < lines.length; i++) {
-    const [a, b, c] = lines[i];
-    if (squares[a] && squares[a] === squares[b] && squares[a] === squares[c]) {
-      return squares[a];
-    }
-  }
-  return null;
-}
