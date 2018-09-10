@@ -13,6 +13,7 @@ class CombinedOrderBooks extends React.Component {
       base: 'BTC',
       quote: 'ETH',
       precision: 4,
+      overlaps: []
     }
   }
   
@@ -51,7 +52,20 @@ class CombinedOrderBooks extends React.Component {
       return { value: symbol, label: symbol }
     })
   }
-  
+
+  generateOverlapData() {
+
+    return this.state.overlaps.map( (overlap) => {
+
+      console.log('overlap', overlap)
+      return {
+        bid: overlap.bid.price,
+        ask: overlap.ask.price,
+        bidExchange: overlap.bidExchange,
+        askExchange: overlap.askExchange
+      }
+    })
+  }
 
   handleBaseChange = async (selectedBaseOption) => {
     this.setState({ base: selectedBaseOption.value });
@@ -71,6 +85,8 @@ class CombinedOrderBooks extends React.Component {
     let columnsData
     let bidsRowsData
     let asksRowsData
+    let overlapData
+    
     let quoteSelectionOptions
     
     try{
@@ -105,12 +121,16 @@ class CombinedOrderBooks extends React.Component {
       quoteSelectionOptions = this.generateQuoteSelectionData()
     }catch(err){}
     
+    try {
+      overlapData = this.generateOverlapData()
+    }catch(err){}
+    
     return (
       <div>
 
         <div>
           Base Symbol
-          <SelectReact
+          <SelectReact 
             value={{value: this.state.base, label: this.state.base}}
             onChange={this.handleBaseChange}
             options={[
@@ -124,6 +144,7 @@ class CombinedOrderBooks extends React.Component {
             onChange={this.handleQuoteChange}
             options={quoteSelectionOptions}
           />
+          Precision (Lower precision combines more orders)
           <SelectReact
             value={{value: this.state.precision, label: this.state.precision+' Decimals'}}
             onChange={this.handlePrecisionChange}
@@ -142,17 +163,33 @@ class CombinedOrderBooks extends React.Component {
         </div>
 
         
-        <div>Combined Bids Order Book {this.state.base}-{this.state.quote}</div>
+        <div style={{paddingTop: '3em'}}>Combined Bids Order Book {this.state.base}-{this.state.quote}</div>
         <ReactTable
           data={bidsRowsData}
           columns={columnsData}
         />
-        <div>Combined Asks Order Book {this.state.base}-{this.state.quote}</div>
+        <div style={{paddingTop: '3em'}}>Combined Asks Order Book {this.state.base}-{this.state.quote}</div>
         <ReactTable
           data={asksRowsData}
           columns={columnsData}
         />
-        
+        <div style={{paddingTop: '3em'}}>Overlapping Bids / Asks (Arbitrage Opportunities) {this.state.base}-{this.state.quote}</div>
+        <ReactTable
+          data={overlapData}
+          columns={[{
+            Header: 'Bid Price',
+            accessor: 'bid'
+          }, {
+            Header: 'Ask Price',
+            accessor: 'ask'
+          }, {
+            Header: 'Bid Exchange',
+            accessor: 'bidExchange'
+          }, {
+            Header: 'Ask Exchange',
+            accessor: 'askExchange'
+          }]}
+        />
       </div>
     );
   }
@@ -161,11 +198,10 @@ class CombinedOrderBooks extends React.Component {
    //    const baseUrl = 'http://54.187.105.135:3001'
    const baseUrl = 'http://localhost:3001'
    const symbols = await fetch(baseUrl + '/symbols').then( (results) => results.json())
+   const overlaps = await fetch(baseUrl + '/overlaps').then( (results) => results.json())
    const combinedBookData = await fetch(baseUrl + '/combined?base=' + this.state.base + '&quote=' + this.state.quote + '&precision=' + this.state.precision).then( (results) => results.json())
 
-   console.log('combinedBookData', combinedBookData)
-
-  return {symbols, combinedBookData}
+  return {symbols, combinedBookData, overlaps}
  }
 }
 
