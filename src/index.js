@@ -108,32 +108,38 @@ class CombinedOrderBooks extends React.Component {
     return (
       <div>
 
-        <SelectReact
-          value={{value: this.state.base, label: this.state.base}}
-          onChange={this.handleBaseChange}
-          options={[
-            { value: 'BTC', label: 'BTC' },
-            { value: 'ETH', label: 'ETH' },
-          ]}
-        />
-        <SelectReact
-          value={{value: this.state.quote, label: this.state.quote}}
-          onChange={this.handleQuoteChange}
-          options={quoteSelectionOptions}
-        />
-        <SelectReact
-          value={{value: this.state.precision, label: this.state.precision+' Decimals'}}
-          onChange={this.handlePrecisionChange}
-          options={[
-            { value: 2, label: '2 Decimals' },
-            { value: 3, label: '3 Decimals' },
-            { value: 4, label: '4 Decimals' },
-            { value: 5, label: '5 Decimals' },
-            { value: 6, label: '6 Decimals' },
-            { value: 7, label: '7 Decimals' },
-            { value: 8, label: '8 Decimals' },
-          ]}
-        />
+        <div>
+          Base Symbol
+          <SelectReact
+            value={{value: this.state.base, label: this.state.base}}
+            onChange={this.handleBaseChange}
+            options={[
+              { value: 'BTC', label: 'BTC' },
+              { value: 'ETH', label: 'ETH' },
+            ]}
+          />
+          Quote Symbol
+          <SelectReact
+            value={{value: this.state.quote, label: this.state.quote}}
+            onChange={this.handleQuoteChange}
+            options={quoteSelectionOptions}
+          />
+          <SelectReact
+            value={{value: this.state.precision, label: this.state.precision+' Decimals'}}
+            onChange={this.handlePrecisionChange}
+            options={[
+              { value: 2, label: '2 Decimals' },
+              { value: 3, label: '3 Decimals' },
+              { value: 4, label: '4 Decimals' },
+              { value: 5, label: '5 Decimals' },
+              { value: 6, label: '6 Decimals' },
+              { value: 7, label: '7 Decimals' },
+              { value: 8, label: '8 Decimals' },
+            ]}
+          />
+
+          
+        </div>
 
         
         <div>Combined Bids Order Book {this.state.base}-{this.state.quote}</div>
