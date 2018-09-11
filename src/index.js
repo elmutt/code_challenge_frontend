@@ -4,130 +4,64 @@ import './index.css';
 import ReactTable from "react-table";
 import 'react-table/react-table.css'
 import SelectReact from 'react-select';
+import utils from './utils';
 
 class CombinedOrderBooks extends React.Component {
-  
+
+//  baseUrl = 'http://54.187.105.135:3001'
+  baseUrl = 'http://localhost:3001'
+
   constructor(props) {
     super(props)
     this.state = {
-      base: 'BTC',
+      // base and quote symbols for which order books to combine.  Default is the BTC-ETH combined order book
+      base: 'BTC', 
       quote: 'ETH',
+      
+      // How much decimal precision to use for order book prices. 
+      // Exchanges usually have 8 decimal places by default but this rarely results in orders being combined because the prices dont match
       precision: 4,
-      overlaps: []
+
+      // combined order book data
+      combinedBookData: undefined,
+
+      // overlapping order book data (arbitrage opportunities)
+      overlaps: [],
+      
+      // available order books for quote side.
+      symbols: undefined,
     }
   }
   
   async componentDidMount() {
-    this.setState(await this.fetchBookAndSymbols())
-  }
-
-
-  generateColumnsData() {
-    const columnItems = []
-    columnItems.push({Header: "Price", accessor: 'price'})
-    this.state.combinedBookData.exchangesIncluded.forEach( (exchange) => {
-      columnItems.push({Header: exchange + ' amount', accessor: exchange + '_amount'})
-    })
-    columnItems.push({Header: '# of orders combined', accessor: 'combined'})
-    return columnItems
+    
+    const fetched = await utils.fetchData(this.baseUrl, this.state.base, this.state.quote, this.state.precision)
+    this.setState(fetched)
   }
   
-  generateRowsData(type) {
-    const rowItems = this.state.combinedBookData[type].map( (order) => {
-      const rowItem = {}
-      rowItem.price = order.price
-      Object.keys(order.exchangeQuantities).forEach( (exchange, index) => {
-        rowItem[exchange + '_amount'] = order.exchangeQuantities[exchange]
-      })
-      rowItem.combined = order.combinedOrderCount
-      return rowItem
-    })
-    return rowItems
-  }
-
-  generateQuoteSelectionData() {
-    
-    return this.state.symbols.map( (symbol) => {
-      
-      return { value: symbol, label: symbol }
-    })
-  }
-
-  generateOverlapData() {
-
-    return this.state.overlaps.map( (overlap) => {
-
-      console.log('overlap', overlap)
-      return {
-        bid: overlap.bid.price,
-        ask: overlap.ask.price,
-        bidExchange: overlap.bidExchange,
-        askExchange: overlap.askExchange
-      }
-    })
-  }
-
   handleBaseChange = async (selectedBaseOption) => {
     this.setState({ base: selectedBaseOption.value });
-    this.setState(await this.fetchBookAndSymbols())
+    this.setState(await utils.fetchData(this.baseUrl, this.state.base, this.state.quote, this.state.precision))
   }
   handleQuoteChange = async (selectedQuoteOption) => {
     this.setState({ quote: selectedQuoteOption.value });
-    this.setState(await this.fetchBookAndSymbols())
+    this.setState(await utils.fetchData(this.baseUrl, this.state.base, this.state.quote, this.state.precision))
   }
   handlePrecisionChange = async (selectedPrecisionOption) => {
     this.setState({ precision: selectedPrecisionOption.value });
-    this.setState(await this.fetchBookAndSymbols())
+    this.setState(await utils.fetchData(this.baseUrl, this.state.base, this.state.quote, selectedPrecisionOption.value))
   }
-
-
+  
   render() {
-    let columnsData
-    let bidsRowsData
-    let asksRowsData
-    let overlapData
-    
-    let quoteSelectionOptions
-    
-    try{
-      columnsData = this.generateColumnsData()
-    } catch(err){
-      columnsData = columnsData || [{
-        Header: 'Price',
-      }, {
-        Header: '',
-      }, {
-        Header: '',
-      }, {
-        Header: '',
-      }, {
-        Header: '',
-      }, {
-        Header: '',
-      }, {
-        Header: '# of orders combined'
-      }]
-    }
-    
-    try {
-      bidsRowsData = this.generateRowsData('bids')
-    } catch(err){}
-    
-    try {
-      asksRowsData = this.generateRowsData('asks')
-    } catch(err){}
 
-    try {
-      quoteSelectionOptions = this.generateQuoteSelectionData()
-    }catch(err){}
-    
-    try {
-      overlapData = this.generateOverlapData()
-    }catch(err){}
+    const columnsData = this.state.combinedBookData ? utils.generateOrderBookColumnsData(this.state.combinedBookData) : []
+    const bidsRowsData = this.state.combinedBookData ? utils.generateOrderBookRowsData(this.state.combinedBookData, 'bids') : []
+    const asksRowsData = this.state.combinedBookData ? utils.generateOrderBookRowsData(this.state.combinedBookData, 'asks') : []
+    const quoteSelectionOptions = this.state.symbols ? utils.generateQuoteSelectionData(this.state.symbols) : undefined
+    const overlapData = this.state.overlaps ? utils.generateOverlapData(this.state.overlaps) : []
     
     return (
       <div>
-
         <div>
           Base Symbol
           <SelectReact 
@@ -158,10 +92,7 @@ class CombinedOrderBooks extends React.Component {
               { value: 8, label: '8 Decimals' },
             ]}
           />
-
-          
         </div>
-
         
         <div style={{paddingTop: '3em'}}>Combined Bids Order Book {this.state.base}-{this.state.quote}</div>
         <ReactTable
@@ -193,19 +124,7 @@ class CombinedOrderBooks extends React.Component {
       </div>
     );
   }
-  
-  async fetchBookAndSymbols() {
-   //    const baseUrl = 'http://54.187.105.135:3001'
-   const baseUrl = 'http://localhost:3001'
-   const symbols = await fetch(baseUrl + '/symbols').then( (results) => results.json())
-   const overlaps = await fetch(baseUrl + '/overlaps').then( (results) => results.json())
-   const combinedBookData = await fetch(baseUrl + '/combined?base=' + this.state.base + '&quote=' + this.state.quote + '&precision=' + this.state.precision).then( (results) => results.json())
-
-  return {symbols, combinedBookData, overlaps}
- }
 }
-
-// ========================================
 
 ReactDOM.render(
   <CombinedOrderBooks />,
